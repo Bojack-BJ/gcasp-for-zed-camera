@@ -21,3 +21,6 @@ python pose_inference.py /home/lxt/research-assignment/gcasp/config/gcn3d_seg/gc
 <img src="assets/demo1.png" width="800">
 
 <img src="assets/demo2.png" width="800">
+
+## Training
+For training and evaluation, please refer to the original [gcasp](https://github.com/zju3dv/gcasp) repository.
