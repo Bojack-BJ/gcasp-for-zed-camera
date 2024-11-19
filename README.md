@@ -2,6 +2,18 @@
 
 This is an implementation of [gcasp](https://github.com/zju3dv/gcasp) for ZED camera. The code is tested on Ubuntu 20.04 with ZED 2i camera.
 
+## Introduction
+The pipeline of this work is as follows:
+1. Use ZED camera to capture RGB-D images.
+2. Back-project the depth image to get the point cloud.
+3. Use instance segmentation(here I use mmdetection) to get the instance masks.
+4. Get the point cloud of each instance.
+5. Use gcasp to get the 3D pose of each instance.
+   
+The result can be used to transform the object into a canonical pose, which is useful for downstream tasks like point cloud completion.
+   
+<img src="assets/pipeline.png" width="800">
+
 ## Installation
 * Follow the instructions from openmmlab to install [mmdetection](https://mmdetection.readthedocs.io/en/latest/get_started.html).
 * Other dependencies:
