@@ -42,6 +42,7 @@ args = parser.parse_args()
 data = args.data
 
 
+
 # Configurations for instance segmentation
 ins_seg_config = '/home/lxt/mmdetection/configs/rtmdet/rtmdet-ins_x_8xb16-300e_coco.py'
 ins_seg_checkpoint = '/home/lxt/mmdetection/ckpt/rtmdet-ins_x_8xb16-300e_coco_20221124_111313-33d4595b.pth'
