@@ -21,6 +21,7 @@ The result can be used to transform the object into a canonical pose, which is u
 pip install scikit-image
 ```
 
+
 ## Inference
 * Download the pretrained checkpoint for gcasp from [here](https://drive.google.com/file/d/1Voz-_p0X9cFmNey-yRbnkV6hsVYmDVzZ/view)
 * Download the pretrained checkpoint for instance segmentation. Modify the path for config file and checkpoint file in the `pose_inference.py` around line 45. My implementation uses `rtmdet-ins_x_8xb16-300e_coco`. You can download the checkpoint from [here](https://download.openmmlab.com/mmdetection/v3.0/rtmdet/rtmdet-ins_x_8xb16-300e_coco/rtmdet-ins_x_8xb16-300e_coco_20221124_111313-33d4595b.pth)
