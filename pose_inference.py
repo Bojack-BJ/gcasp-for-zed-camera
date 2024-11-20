@@ -86,9 +86,8 @@ if zed.grab() == sl.ERROR_CODE.SUCCESS:
 
 calibration_params = zed.get_camera_information().camera_configuration.calibration_parameters
 
-# imu_data = sensors_data.get_imu_data()
-# pose_matrix = imu_data.get_pose().m
 
+# Get intrinsics
 left_cam = calibration_params.left_cam
 fx = left_cam.fx
 fy = left_cam.fy
@@ -96,22 +95,24 @@ cx = left_cam.cx
 cy = left_cam.cy
 intrinsics = [[fx, 0, cx], [0, fy, cy], [0, 0, 1]]
 
+# Get image and depth in OpenCV format
 image_ocv = image.get_data()
 image_ocv = cv2.cvtColor(image_ocv, cv2.COLOR_BGR2RGB)
 colors = image_ocv[:,:,:3].reshape(-1, 3)/255.
-
 
 depth_ocv = depth.get_data()
 depth_ocv_normalized = cv2.normalize(depth_ocv, None, 0, 255, cv2.NORM_MINMAX)
 depth_ocv_normalized = depth_ocv_normalized.astype(np.uint8)
 
+
+# Get 3D points and colors for the scene
 scene_points_3d = scene_point_cloud.get_data()[:, :, :3].reshape(-1, 3)
-valid_mask = ~np.isnan(scene_points_3d).any(axis=1)  # 生成一个布尔掩码，标记没有 NaN 的点
+valid_mask = ~np.isnan(scene_points_3d).any(axis=1) 
 scene_points_3d = scene_points_3d[valid_mask]
 colors = colors[valid_mask]
 
 
-# TEST!!!
+# TEST CODE
 # image_ocv = cv2.imread('/home/lxt/research-assignment/gcasp/0000_color.png')
 # colors = image_ocv[:,:,:3].reshape(-1, 3)/255.
 # depth_ocv = cv2.imread('/home/lxt/research-assignment/gcasp/0000_depth.png', -1)
@@ -136,12 +137,14 @@ labels = labels[keep]
 scores = scores[keep] 
 bboxes = bboxes[keep]
 
+
+# Get 3D points, colors and labels for each object
 objects = {}
 objects['points_3d'] = []
 objects['label'] = []
 objects['color'] = []
 for mask, label in zip(masks, labels):
-    indices = np.where(mask == True)  # 获取掩码区域的像素索引
+    indices = np.where(mask == True)  
     points_3d = []
     color = []
     for v, u in zip(indices[0], indices[1]):
@@ -203,17 +206,18 @@ result['pred_scores'] = []
 result['class_ids'] = []
 result['masks'] = []
 
-# intrinsics = np.array([[591.0125, 0, 322.525], [0, 590.16775, 244.11084], [0, 0, 1]])
+
 for i, eval_id in enumerate(to_eval_ids):
-    print(f"Start inference for {synset_names[eval_id]}")
+
     for j,label in enumerate(objects['label']):
         print(f"Object {model_ins_seg.dataset_meta['classes'][label]}")
-        if model_ins_seg.dataset_meta['classes'][label] == synset_names[eval_id] or (model_ins_seg.dataset_meta['classes'][label] == 'cup' and synset_names[eval_id] == 'mug'):
+        if model_ins_seg.dataset_meta['classes'][label] == synset_names[eval_id] or (model_ins_seg.dataset_meta['classes'][label] == 'cup' and synset_names[eval_id] == 'mug'): #if the object is the same as the one we want to evaluate
 
-            valid_mask = ~np.isnan(objects['points_3d'][j]).any(axis=1)
+            # remove NaN points
+            valid_mask = ~np.isnan(objects['points_3d'][j]).any(axis=1) 
             objects['points_3d'][j] = objects['points_3d'][j][valid_mask]
 
-
+            # denoise
             clean_pc = o3d.geometry.PointCloud()
             clean_pc.points = o3d.utility.Vector3dVector(objects['points_3d'][j])
             clean_pc = clean_pc.voxel_down_sample(voxel_size=0.01)
@@ -221,22 +225,22 @@ for i, eval_id in enumerate(to_eval_ids):
 
             points = np.asarray(clean_pc.points)
 
+            # inference, s is the scale, R is the rotation matrix, t is the translation vector, T is the transformation matrix
             s, R, t, T, pred_scale,shapecode, points = infer_from_points(model, points, shape_handlers[i], eval_id, num_segs)
             if points is None:
                 continue
             o3d_pc = o3d.geometry.PointCloud()
-            # s, R, t, T, pred_scale,shapecode, points = infer_from_points(model, depth_ocv, masks[j], None, intrinsics, shape_handlers[i], eval_id)
             object_colors = np.zeros((points.shape[0], 3))
             object_colors[:, 0] = 1.0
             object_center = np.mean(points, axis=0)
-            # points = np.vstack((scene_points_3d, points))
-            # object_colors = np.vstack((colors, object_colors))
+
+            # add scene points
             o3d_pc.points = o3d.utility.Vector3dVector(scene_points_3d)
             o3d_pc.colors = o3d.utility.Vector3dVector(colors)
             o3d_pc = o3d_pc.voxel_down_sample(voxel_size=0.01)
             o3d_pc, ind = o3d_pc.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
 
-            # object_center = np.mean(objects['points_3d'][j], axis=0)
+            # create a coordinate frame
             axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1)
             z_180_RT = np.zeros((4, 4), dtype=np.float32)
             z_180_RT[:3, :3] = np.diag([-1, -1, 1])
@@ -245,6 +249,8 @@ for i, eval_id in enumerate(to_eval_ids):
             axis.rotate(T[:3,:3])
             axis.translate(object_center)
             o3d.visualization.draw_geometries([o3d_pc, axis])
+
+            # transform the object to canonical pose and save it
             normalized_object_pc = o3d.geometry.PointCloud()
             normalized_object_pc.points = o3d.utility.Vector3dVector(objects['points_3d'][j])
             normalized_object_pc = normalized_object_pc.rotate(np.linalg.inv(T[:3,:3]))
